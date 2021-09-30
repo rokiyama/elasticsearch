@@ -40,6 +40,11 @@ type Document struct {
 	Body  interface{}
 }
 
+// for UpdateRequest
+type documentBody struct {
+	Doc interface{} `json:"doc"`
+}
+
 type Elasticsearch interface {
 	Refresh() error
 	CreateDocument(doc *Document) (StatusCode, error)
@@ -107,7 +112,9 @@ func (es *_elasticsearch) UpdateDocument(doc *Document) (StatusCode, error) {
 		return StatusInternalError, errors.New("Required body")
 	}
 
-	body, err := json.Marshal(doc.Body)
+	body, err := json.Marshal(&documentBody{
+		Doc: doc.Body, // https://discuss.elastic.co/t/updating-elasticsearch-document/265705
+	})
 	if err != nil {
 		return StatusInternalError, err
 	}
@@ -218,7 +225,6 @@ func (es *_elasticsearch) Search(index string, query string, data interface{}) (
 		return StatusParseError, err
 	}
 
-	log.Println("🐯", result)
 	if _, ok := result["hits"]; !ok {
 		return StatusNoContent, nil
 	}

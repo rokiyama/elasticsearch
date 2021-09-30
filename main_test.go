@@ -105,6 +105,59 @@ func TestCreateDocument(t *testing.T) {
 	})
 }
 
+func TestUpdateDocument(t *testing.T) {
+	es := newElasticsearch()
+
+	type UpdateDoc struct {
+		Doc DocBody `json:"doc"`
+	}
+
+	var data DocBody
+	faker.FakeData(&data)
+	data.Id = faker.UUIDDigit()
+
+	es.CreateDocument(&Document{
+		Index: indexName,
+		ID:    data.Id,
+		Body:  data,
+	})
+	es.Refresh()
+
+	t.Run("Success", func(t *testing.T) {
+		var body DocBody
+		faker.FakeData(&body)
+		body.Id = data.Id
+		status, err := es.UpdateDocument(&Document{
+			Index: indexName,
+			ID:    data.Id,
+			Body:  body,
+		})
+
+		assert.NoError(t, err)
+		assert.Equal(t, StatusSuccess, status)
+
+		es.Refresh()
+
+		var list []DocBody
+		status, err = es.Search(indexName, fmt.Sprintf(`{
+			"query": {
+				"term": {
+					"id": {
+						"value": "%s"
+					}
+				}
+			}
+		}`, data.Id), &list)
+
+		assert.NoError(t, err)
+		assert.Equal(t, StatusSuccess, status)
+		assert.Equal(t, body.Id, list[0].Id)
+		assert.Equal(t, body.S, list[0].S)
+		assert.Equal(t, body.B, list[0].B)
+		assert.Equal(t, body.I, list[0].I)
+	})
+}
+
 func TestRemoveDocument(t *testing.T) {
 	es := newElasticsearch()
 
