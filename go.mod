@@ -1,4 +1,4 @@
-module bitbucket.org/linksportsinc/elasticsearch
+module github.com/linksports/elasticsearch
 
 go 1.16
 
