@@ -47,6 +47,8 @@ type documentBody struct {
 
 type Elasticsearch interface {
 	Refresh() error
+	Ping() error
+	CreateIndexTemplate(name, templates string) (StatusCode, error)
 	CreateDocument(doc *Document) (StatusCode, error)
 	UpdateDocument(doc *Document) (StatusCode, error)
 	RemoveDocument(doc *Document) (StatusCode, error)
@@ -56,6 +58,37 @@ type Elasticsearch interface {
 
 func New(config *Config) Elasticsearch {
 	return &_elasticsearch{client: connectElasticsearch(config)}
+}
+
+func (es *_elasticsearch) Ping() error {
+	_, err := es.client.Ping()
+	return err
+}
+
+func (es *_elasticsearch) CreateIndexTemplate(name, templates string) (StatusCode, error) {
+	req := esapi.IndicesPutIndexTemplateRequest{
+		Body: strings.NewReader(templates),
+		Name: name,
+	}
+
+	res, err := req.Do(context.Background(), es.client)
+
+	if err != nil {
+		return StatusInternalError, err
+	}
+
+	defer res.Body.Close()
+
+	if res.IsError() {
+		log.Printf("[%s] Error Create Index Template %s", res.Status(), templates)
+		switch res.StatusCode {
+		case 400:
+			return StatusBadRequestError, errors.New("bad request")
+		}
+		return StatusError, err
+	}
+
+	return StatusSuccess, err
 }
 
 func (es *_elasticsearch) Refresh() error {

@@ -10,7 +10,7 @@ services:
       - discovery.type=single-node
       - node.name=es01
   kibana:
-    image: docker.elastic.co/kibana/kibana:7.4.2
+    image: docker.elastic.co/kibana/kibana:7.12.1
     ports:
       - 5601:5601
     links:
