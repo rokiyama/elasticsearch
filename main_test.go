@@ -36,6 +36,37 @@ func newElasticsearch() Elasticsearch {
 	})
 }
 
+func TestPing(t *testing.T) {
+	es := newElasticsearch()
+
+	err := es.Ping()
+	assert.NoError(t, err)
+}
+
+func TestCreateIndexTemplate(t *testing.T) {
+	es := newElasticsearch()
+	templates := `{	
+		"index_patterns" : ["test"],	
+		"priority": 500,  
+		"template": {
+			"settings" : {  
+				"number_of_shards" : 2 
+			},
+			"mappings": {
+				"properties": {
+					"name": {
+						"type": "text"
+					}
+				}
+			}   
+		}
+	} `
+	status, err := es.CreateIndexTemplate(faker.Word(), templates)
+
+	assert.Equal(t, StatusSuccess, status)
+	assert.NoError(t, err)
+}
+
 func TestRefresh(t *testing.T) {
 	es := newElasticsearch()
 
