@@ -170,7 +170,7 @@ func TestUpdateDocument(t *testing.T) {
 		es.Refresh()
 
 		var list []DocBody
-		status, err = es.Search(indexName, fmt.Sprintf(`{
+		status, total, err := es.Search(indexName, fmt.Sprintf(`{
 			"query": {
 				"term": {
 					"id": {
@@ -182,6 +182,7 @@ func TestUpdateDocument(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.Equal(t, StatusSuccess, status)
+		assert.Equal(t, 1, total)
 		assert.Equal(t, body.Id, list[0].Id)
 		assert.Equal(t, body.S, list[0].S)
 		assert.Equal(t, body.B, list[0].B)
@@ -246,7 +247,7 @@ func TestSearch(t *testing.T) {
 
 	t.Run("Found", func(t *testing.T) {
 		var list []DocBody
-		status, err := es.Search(indexName, fmt.Sprintf(`{
+		status, total, err := es.Search(indexName, fmt.Sprintf(`{
 			"query": {
 				"term": {
 					"id": {
@@ -258,6 +259,7 @@ func TestSearch(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.Equal(t, StatusSuccess, status)
+		assert.Equal(t, 1, total)
 		assert.Equal(t, data.Id, list[0].Id)
 		assert.Equal(t, data.S, list[0].S)
 		assert.Equal(t, data.B, list[0].B)
@@ -266,7 +268,7 @@ func TestSearch(t *testing.T) {
 
 	t.Run("Not Found", func(t *testing.T) {
 		var list []DocBody
-		status, err := es.Search(indexName, fmt.Sprintf(`{
+		status, total, err := es.Search(indexName, fmt.Sprintf(`{
 			"query": {
 				"term": {
 					"id": {
@@ -277,6 +279,7 @@ func TestSearch(t *testing.T) {
 		}`, "not-exists"), &list)
 
 		assert.NoError(t, err)
+		assert.Equal(t, 0, total)
 		assert.Equal(t, StatusSuccess, status)
 		assert.Empty(t, list)
 	})
@@ -298,7 +301,7 @@ func TestSearch(t *testing.T) {
 		es.Refresh()
 
 		var list []DocBody
-		status, err := es.Search(indexName, fmt.Sprintf(`{
+		status, total, err := es.Search(indexName, fmt.Sprintf(`{
 			"query": {
 				"terms": {
 					"id": [
@@ -312,6 +315,7 @@ func TestSearch(t *testing.T) {
 
 		for i, d := range data {
 			assert.Equal(t, StatusSuccess, status)
+			assert.Equal(t, len(data), total)
 			assert.Equal(t, d.Id, list[i].Id)
 			assert.Equal(t, d.S, list[i].S)
 			assert.Equal(t, d.B, list[i].B)
@@ -337,7 +341,7 @@ func TestSearch(t *testing.T) {
 		es.Refresh()
 
 		var list []DocBody
-		status, err := es.Search(indexName, fmt.Sprintf(`{
+		status, total, err := es.Search(indexName, fmt.Sprintf(`{
 			"query": {
 				"terms": {
 					"id": [
@@ -355,6 +359,7 @@ func TestSearch(t *testing.T) {
 		}`, data[0].Id, data[1].Id, data[2].Id), &list)
 
 		assert.NoError(t, err)
+		assert.Equal(t, len(data), total)
 
 		for index, d := range data {
 			i := len(list) - 1 - index
