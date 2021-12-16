@@ -45,6 +45,14 @@ type documentBody struct {
 	Doc interface{} `json:"doc"`
 }
 
+type HitData struct {
+	Index string        `json:"_index"`
+	Type  string        `json:"_type"`
+	Id    string        `json:"_id"`
+	Score float64       `json:"_score"`
+	Sort  []interface{} `json:"sort"`
+}
+
 type Elasticsearch interface {
 	Refresh() error
 	Ping() error
@@ -52,7 +60,7 @@ type Elasticsearch interface {
 	CreateDocument(doc *Document) (StatusCode, error)
 	UpdateDocument(doc *Document) (StatusCode, error)
 	RemoveDocument(doc *Document) (StatusCode, error)
-	Search(index string, query string, data interface{}) (StatusCode, int, error)
+	Search(index string, query string, data interface{}) (StatusCode, []*HitData, int, error)
 	DeleteIndeces(index ...string) (StatusCode, error)
 }
 
@@ -217,7 +225,7 @@ func (es *_elasticsearch) RemoveDocument(doc *Document) (StatusCode, error) {
 	return StatusSuccess, err
 }
 
-func (es *_elasticsearch) Search(index string, query string, data interface{}) (StatusCode, int, error) {
+func (es *_elasticsearch) Search(index string, query string, data interface{}) (StatusCode, []*HitData, int, error) {
 	// Perform the search request.
 	res, err := es.client.Search(
 		es.client.Search.WithContext(context.Background()),
@@ -229,7 +237,7 @@ func (es *_elasticsearch) Search(index string, query string, data interface{}) (
 
 	if err != nil {
 		log.Fatalf("Error getting response: %s", err)
-		return StatusRequestError, 0, err
+		return StatusRequestError, []*HitData{}, 0, err
 	}
 	defer res.Body.Close()
 
@@ -248,18 +256,18 @@ func (es *_elasticsearch) Search(index string, query string, data interface{}) (
 
 		switch res.StatusCode {
 		case 400:
-			return StatusBadRequestError, 0, err
+			return StatusBadRequestError, []*HitData{}, 0, err
 		}
-		return StatusError, 0, err
+		return StatusError, []*HitData{}, 0, err
 	}
 
 	var result map[string]interface{}
 	if err := json.NewDecoder(res.Body).Decode(&result); err != nil {
-		return StatusParseError, 0, err
+		return StatusParseError, []*HitData{}, 0, err
 	}
 
 	if _, ok := result["hits"]; !ok {
-		return StatusNoContent, 0, nil
+		return StatusNoContent, []*HitData{}, 0, nil
 	}
 
 	total := 0
@@ -270,16 +278,34 @@ func (es *_elasticsearch) Search(index string, query string, data interface{}) (
 	hits := result["hits"].(map[string]interface{})["hits"].([]interface{})
 
 	documents := make([]interface{}, len(hits))
+	hitsData := make([]*HitData, len(hits))
+
 	for i, hit := range hits {
 		documents[i] = hit.(map[string]interface{})["_source"]
+
+		h := &HitData{
+			Index: hit.(map[string]interface{})["_index"].(string),
+			Type:  hit.(map[string]interface{})["_type"].(string),
+			Id:    hit.(map[string]interface{})["_id"].(string),
+		}
+
+		if score, _ := hit.(map[string]interface{})["_score"]; score != nil {
+			h.Score = score.(float64)
+		}
+
+		if sort, _ := hit.(map[string]interface{})["sort"]; sort != nil {
+			h.Sort = sort.([]interface{})
+		}
+
+		hitsData[i] = h
 	}
 
 	tmp, err := json.Marshal(documents)
 	if err := json.Unmarshal(tmp, data); err != nil {
-		return StatusParseError, 0, err
+		return StatusParseError, []*HitData{}, 0, err
 	}
 
-	return StatusSuccess, total, nil
+	return StatusSuccess, hitsData, total, nil
 }
 
 func (es *_elasticsearch) DeleteIndeces(index ...string) (StatusCode, error) {

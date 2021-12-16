@@ -2,6 +2,7 @@ package elasticsearch
 
 import (
 	"fmt"
+	"math/rand"
 	"os"
 	"testing"
 
@@ -45,9 +46,9 @@ func TestPing(t *testing.T) {
 
 func TestCreateIndexTemplate(t *testing.T) {
 	es := newElasticsearch()
-	templates := `{	
+	templates := fmt.Sprintf(`{	
 		"index_patterns" : ["test"],	
-		"priority": 500,  
+		"priority": %d,  
 		"template": {
 			"settings" : {  
 				"number_of_shards" : 2 
@@ -60,7 +61,7 @@ func TestCreateIndexTemplate(t *testing.T) {
 				}
 			}   
 		}
-	} `
+	} `, rand.Intn(999999)+100)
 	status, err := es.CreateIndexTemplate(faker.Word(), templates)
 
 	assert.Equal(t, StatusSuccess, status)
@@ -170,7 +171,7 @@ func TestUpdateDocument(t *testing.T) {
 		es.Refresh()
 
 		var list []DocBody
-		status, total, err := es.Search(indexName, fmt.Sprintf(`{
+		status, _, total, err := es.Search(indexName, fmt.Sprintf(`{
 			"query": {
 				"term": {
 					"id": {
@@ -247,7 +248,7 @@ func TestSearch(t *testing.T) {
 
 	t.Run("Found", func(t *testing.T) {
 		var list []DocBody
-		status, total, err := es.Search(indexName, fmt.Sprintf(`{
+		status, hits, total, err := es.Search(indexName, fmt.Sprintf(`{
 			"query": {
 				"term": {
 					"id": {
@@ -260,6 +261,9 @@ func TestSearch(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, StatusSuccess, status)
 		assert.Equal(t, 1, total)
+		assert.Equal(t, data.Id, hits[0].Id)
+		assert.Equal(t, indexName, hits[0].Index)
+
 		assert.Equal(t, data.Id, list[0].Id)
 		assert.Equal(t, data.S, list[0].S)
 		assert.Equal(t, data.B, list[0].B)
@@ -268,7 +272,7 @@ func TestSearch(t *testing.T) {
 
 	t.Run("Not Found", func(t *testing.T) {
 		var list []DocBody
-		status, total, err := es.Search(indexName, fmt.Sprintf(`{
+		status, hits, total, err := es.Search(indexName, fmt.Sprintf(`{
 			"query": {
 				"term": {
 					"id": {
@@ -280,6 +284,8 @@ func TestSearch(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.Equal(t, 0, total)
+		assert.Empty(t, hits)
+
 		assert.Equal(t, StatusSuccess, status)
 		assert.Empty(t, list)
 	})
@@ -301,7 +307,7 @@ func TestSearch(t *testing.T) {
 		es.Refresh()
 
 		var list []DocBody
-		status, total, err := es.Search(indexName, fmt.Sprintf(`{
+		status, hits, total, err := es.Search(indexName, fmt.Sprintf(`{
 			"query": {
 				"terms": {
 					"id": [
@@ -316,6 +322,9 @@ func TestSearch(t *testing.T) {
 		for i, d := range data {
 			assert.Equal(t, StatusSuccess, status)
 			assert.Equal(t, len(data), total)
+			assert.Equal(t, d.Id, hits[i].Id)
+			assert.Equal(t, indexName, hits[i].Index)
+
 			assert.Equal(t, d.Id, list[i].Id)
 			assert.Equal(t, d.S, list[i].S)
 			assert.Equal(t, d.B, list[i].B)
@@ -341,7 +350,7 @@ func TestSearch(t *testing.T) {
 		es.Refresh()
 
 		var list []DocBody
-		status, total, err := es.Search(indexName, fmt.Sprintf(`{
+		status, hits, total, err := es.Search(indexName, fmt.Sprintf(`{
 			"query": {
 				"terms": {
 					"id": [
@@ -364,6 +373,10 @@ func TestSearch(t *testing.T) {
 		for index, d := range data {
 			i := len(list) - 1 - index
 			assert.Equal(t, StatusSuccess, status)
+			assert.Equal(t, d.Id, hits[i].Id)
+			assert.Equal(t, indexName, hits[i].Index)
+			assert.Equal(t, d.I, int(hits[i].Sort[0].(float64)))
+
 			assert.Equal(t, d.Id, list[i].Id)
 			assert.Equal(t, d.S, list[i].S)
 			assert.Equal(t, d.B, list[i].B)
