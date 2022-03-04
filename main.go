@@ -56,11 +56,15 @@ type HitData struct {
 type Elasticsearch interface {
 	Refresh() error
 	Ping() error
+
 	CreateIndexTemplate(name, templates string) (StatusCode, error)
 	CreateDocument(doc *Document) (StatusCode, error)
 	UpdateDocument(doc *Document) (StatusCode, error)
 	RemoveDocument(doc *Document) (StatusCode, error)
+
 	Search(index string, query string, data interface{}) (StatusCode, []*HitData, int, error)
+	Count(index string, query string) (StatusCode, int, error)
+
 	DeleteIndeces(index ...string) (StatusCode, error)
 }
 
@@ -234,12 +238,12 @@ func (es *_elasticsearch) Search(index string, query string, data interface{}) (
 		es.client.Search.WithTrackTotalHits(true),
 		es.client.Search.WithPretty(),
 	)
+	defer res.Body.Close()
 
 	if err != nil {
 		log.Fatalf("Error getting response: %s", err)
 		return StatusRequestError, []*HitData{}, 0, err
 	}
-	defer res.Body.Close()
 
 	if res.IsError() {
 		var e map[string]interface{}
