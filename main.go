@@ -34,10 +34,20 @@ type Config struct {
 	APIKey  string
 }
 
+// https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-refresh.html
+type RefreshPolicy string
+
+const (
+	RefreshTrue    RefreshPolicy = "true"
+	RefreshFalse   RefreshPolicy = "false"
+	RefreshWaitFor RefreshPolicy = "wait_for"
+)
+
 type Document struct {
-	Index string
-	ID    string
-	Body  interface{}
+	Index   string
+	ID      string
+	Body    interface{}
+	Refresh RefreshPolicy
 }
 
 // for UpdateRequest
@@ -54,7 +64,7 @@ type HitData struct {
 }
 
 type Elasticsearch interface {
-	Refresh() error
+	Refresh(index ...string) error
 	Ping() error
 
 	CreateIndexTemplate(name, templates string) (StatusCode, error)
@@ -103,8 +113,11 @@ func (es *_elasticsearch) CreateIndexTemplate(name, templates string) (StatusCod
 	return StatusSuccess, err
 }
 
-func (es *_elasticsearch) Refresh() error {
-	_, err := es.client.Indices.Refresh()
+func (es *_elasticsearch) Refresh(index ...string) error {
+	_, err := es.client.Indices.Refresh(func(req *esapi.IndicesRefreshRequest) {
+		req.Index = index
+	})
+
 	return err
 }
 
@@ -122,6 +135,7 @@ func (es *_elasticsearch) CreateDocument(doc *Document) (StatusCode, error) {
 		Index:      doc.Index,
 		DocumentID: doc.ID,
 		Body:       bytes.NewReader(body),
+		Refresh:    string(doc.Refresh),
 	}
 
 	res, err := req.Do(context.Background(), es.client)
