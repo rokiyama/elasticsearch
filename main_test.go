@@ -135,7 +135,7 @@ func TestCreateDocument(t *testing.T) {
 				Index:   indexName,
 				ID:      body.Id,
 				Body:    body,
-				Refresh: RefreshTrue,
+				Refresh: RefreshFalse,
 			})
 			assert.NoError(t, err)
 			assert.Equal(t, StatusCreated, status)
@@ -150,7 +150,7 @@ func TestCreateDocument(t *testing.T) {
 				Index:   indexName,
 				ID:      body.Id,
 				Body:    body,
-				Refresh: RefreshTrue,
+				Refresh: RefreshWaitFor,
 			})
 			assert.NoError(t, err)
 			assert.Equal(t, StatusCreated, status)
