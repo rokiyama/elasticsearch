@@ -71,25 +71,101 @@ func TestCreateIndexTemplate(t *testing.T) {
 func TestRefresh(t *testing.T) {
 	es := newElasticsearch()
 
-	err := es.Refresh()
-	assert.NoError(t, err)
+	t.Run("refresh all indices", func(t *testing.T) {
+		err := es.Refresh()
+		assert.NoError(t, err)
+	})
+
+	t.Run("refresh only specific index", func(t *testing.T) {
+		err := es.Refresh(indexName)
+		assert.NoError(t, err)
+	})
 }
 
 func TestCreateDocument(t *testing.T) {
 	es := newElasticsearch()
 
 	t.Run("Success", func(t *testing.T) {
-		var body DocBody
-		faker.FakeData(&body)
-		body.Id = faker.UUIDDigit()
+		t.Run("No refresh option", func(t *testing.T) {
+			var body DocBody
+			faker.FakeData(&body)
+			body.Id = faker.UUIDDigit()
 
-		status, err := es.CreateDocument(&Document{
-			Index: indexName,
-			ID:    body.Id,
-			Body:  body,
+			status, err := es.CreateDocument(&Document{
+				Index: indexName,
+				ID:    body.Id,
+				Body:  body,
+			})
+			assert.NoError(t, err)
+			assert.Equal(t, StatusCreated, status)
 		})
-		assert.NoError(t, err)
-		assert.Equal(t, StatusCreated, status)
+
+		t.Run("refresh:true", func(t *testing.T) {
+			var body DocBody
+			faker.FakeData(&body)
+			body.Id = faker.UUIDDigit()
+
+			status, err := es.CreateDocument(&Document{
+				Index:   indexName,
+				ID:      body.Id,
+				Body:    body,
+				Refresh: RefreshTrue,
+			})
+			assert.NoError(t, err)
+			assert.Equal(t, StatusCreated, status)
+
+			var list []DocBody
+			_, _, total, err := es.Search(indexName, fmt.Sprintf(`{
+				"query": {
+					"term": {
+						"id": "%s"
+					}
+				}
+			}`, body.Id), &list)
+
+			assert.Equal(t, 1, total)
+		})
+
+		t.Run("refresh:false", func(t *testing.T) {
+			var body DocBody
+			faker.FakeData(&body)
+			body.Id = faker.UUIDDigit()
+
+			status, err := es.CreateDocument(&Document{
+				Index:   indexName,
+				ID:      body.Id,
+				Body:    body,
+				Refresh: RefreshTrue,
+			})
+			assert.NoError(t, err)
+			assert.Equal(t, StatusCreated, status)
+		})
+
+		t.Run("refresh:wait_for", func(t *testing.T) {
+			var body DocBody
+			faker.FakeData(&body)
+			body.Id = faker.UUIDDigit()
+
+			status, err := es.CreateDocument(&Document{
+				Index:   indexName,
+				ID:      body.Id,
+				Body:    body,
+				Refresh: RefreshTrue,
+			})
+			assert.NoError(t, err)
+			assert.Equal(t, StatusCreated, status)
+
+			var list []DocBody
+			_, _, total, err := es.Search(indexName, fmt.Sprintf(`{
+				"query": {
+					"term": {
+						"id": "%s"
+					}
+				}
+			}`, body.Id), &list)
+
+			assert.Equal(t, 1, total)
+		})
 	})
 
 	t.Run("Failure", func(t *testing.T) {
@@ -153,7 +229,7 @@ func TestUpdateDocument(t *testing.T) {
 		ID:    data.Id,
 		Body:  data,
 	})
-	es.Refresh()
+	es.Refresh(indexName)
 
 	t.Run("Success", func(t *testing.T) {
 		var body DocBody
@@ -168,7 +244,7 @@ func TestUpdateDocument(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, StatusSuccess, status)
 
-		es.Refresh()
+		es.Refresh(indexName)
 
 		var list []DocBody
 		status, _, total, err := es.Search(indexName, fmt.Sprintf(`{
@@ -204,7 +280,7 @@ func TestRemoveDocument(t *testing.T) {
 			ID:    data.Id,
 			Body:  data,
 		})
-		es.Refresh()
+		es.Refresh(indexName)
 
 		status, err := es.RemoveDocument(&Document{
 			Index: indexName,
@@ -244,7 +320,7 @@ func TestSearch(t *testing.T) {
 		ID:    data.Id,
 		Body:  data,
 	})
-	es.Refresh()
+	es.Refresh(indexName)
 
 	t.Run("Found", func(t *testing.T) {
 		var list []DocBody
@@ -304,7 +380,7 @@ func TestSearch(t *testing.T) {
 			})
 			data[i] = d
 		}
-		es.Refresh()
+		es.Refresh(indexName)
 
 		var list []DocBody
 		status, hits, total, err := es.Search(indexName, fmt.Sprintf(`{
@@ -347,7 +423,7 @@ func TestSearch(t *testing.T) {
 			})
 			data[i] = d
 		}
-		es.Refresh()
+		es.Refresh(indexName)
 
 		var list []DocBody
 		status, hits, total, err := es.Search(indexName, fmt.Sprintf(`{
