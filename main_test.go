@@ -368,7 +368,7 @@ func TestSearch(t *testing.T) {
 
 	t.Run("Multiple", func(t *testing.T) {
 		data := make([]DocBody, 3)
-		for i, _ := range data {
+		for i := range data {
 			var d DocBody
 			faker.FakeData(&d)
 			d.Id = faker.UUIDDigit()
@@ -410,7 +410,7 @@ func TestSearch(t *testing.T) {
 
 	t.Run("Sort", func(t *testing.T) {
 		data := make([]DocBody, 3)
-		for i, _ := range data {
+		for i := range data {
 			var d DocBody
 			faker.FakeData(&d)
 			d.Id = faker.UUIDDigit()

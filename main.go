@@ -73,6 +73,7 @@ type Elasticsearch interface {
 	RemoveDocument(doc *Document) (StatusCode, error)
 
 	Search(index string, query string, data interface{}) (StatusCode, []*HitData, int, error)
+	GetSource(index string, id string, result any) (int, error)
 	Count(index string, query string) (StatusCode, int, error)
 
 	DeleteIndeces(index ...string) (StatusCode, error)
