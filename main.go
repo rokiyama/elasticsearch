@@ -256,17 +256,17 @@ func (es *_elasticsearch) Search(index string, query string, data interface{}) (
 	defer res.Body.Close()
 
 	if err != nil {
-		log.Fatalf("Error getting response: %s", err)
+		log.Printf("Error getting response: %s", err)
 		return StatusRequestError, []*HitData{}, 0, err
 	}
 
 	if res.IsError() {
 		var e map[string]interface{}
 		if err := json.NewDecoder(res.Body).Decode(&e); err != nil {
-			log.Fatalf("Error parsing the response body: %s", err)
+			log.Printf("Error parsing the response body: %s", err)
 		} else {
 			//Print the response status and error information.
-			log.Fatalf("[%s] %s: %s",
+			log.Printf("[%s] %s: %s",
 				res.Status(),
 				e["error"].(map[string]interface{})["type"],
 				e["error"].(map[string]interface{})["reason"],
