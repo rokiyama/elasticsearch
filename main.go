@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"strings"
 
@@ -262,16 +263,12 @@ func (es *_elasticsearch) Search(index string, query string, data interface{}) (
 
 	if res.IsError() {
 		var esErr error
-		var e map[string]interface{}
-		if err := json.NewDecoder(res.Body).Decode(&e); err != nil {
-			esErr = fmt.Errorf("Error parsing the response body: %s", err)
+		errJson, err := io.ReadAll(res.Body)
+		if err != nil {
+			esErr = fmt.Errorf("error parsing the response body: %s", err)
 		} else {
 			//Print the response status and error information.
-			esErr = fmt.Errorf("[%s] %s: %s",
-				res.Status(),
-				e["error"].(map[string]interface{})["type"],
-				e["error"].(map[string]interface{})["reason"],
-			)
+			esErr = fmt.Errorf("[%s] %s", res.Status(), errJson)
 		}
 		log.Println(esErr)
 
